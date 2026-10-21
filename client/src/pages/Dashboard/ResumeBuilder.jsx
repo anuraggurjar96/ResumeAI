@@ -1,9 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { downloadPDF } from "../../utils/pdfExport";
 import { downloadDOCX } from "../../utils/docxExport";
-import { createResume, updateResume } from "../../services/resumeService";
+import { createResume, updateResume, getResumeById } from "../../services/resumeService";
 import { copyResumeLink, shareResumeLink } from "../../utils/shareResume";
 import { atsCheck } from "../../services/aiService";
 
@@ -30,6 +30,39 @@ export default function ResumeBuilder() {
   const [step, setStep] = useState(1);
   const [atsResult, setAtsResult] = useState(null);
   const [checkingATS, setCheckingATS] = useState(false);
+
+  // Load existing resume from MongoDB if editing
+  useEffect(() => {
+    if (resumeId) {
+      const loadResume = async () => {
+        try {
+          const res = await getResumeById(resumeId);
+          if (res?.resume) {
+            const r = res.resume;
+            if (r.resumeName) setResumeName(r.resumeName);
+            if (r.template) setTemplate(r.template);
+            if (r.publicId) setPublicId(r.publicId);
+            if (r.personalInfo) {
+              setFormData((prev) => ({ ...prev, ...r.personalInfo }));
+            }
+            if (Array.isArray(r.education) && r.education.length > 0) {
+              setEducation(r.education);
+            }
+            if (Array.isArray(r.experience) && r.experience.length > 0) {
+              setExperiences(r.experience);
+            }
+            if (Array.isArray(r.projects) && r.projects.length > 0) {
+              setProjects(r.projects);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load resume details:", err);
+          toast.error("Failed to load resume details from server.");
+        }
+      };
+      loadResume();
+    }
+  }, [resumeId]);
 
   // =========================
   // Personal Details
@@ -381,7 +414,7 @@ const resumeRef = useRef(null);
   </button>
 
  <button
-onClick={() => downloadPDF(resumeRef)}
+onClick={() => downloadPDF(resumeRef, resumeName || formData.fullName || "Resume")}
 className="px-6 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
 >
 Download PDF

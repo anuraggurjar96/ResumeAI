@@ -31,7 +31,7 @@ const HowWorks = () => {
       id="how"
       className="bg-white py-24"
     >
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="w-full px-6 lg:px-12 xl:px-16">
 
         {/* Heading */}
         <div className="max-w-3xl mx-auto text-center">

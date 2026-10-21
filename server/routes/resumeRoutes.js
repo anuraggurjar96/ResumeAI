@@ -18,6 +18,7 @@ router.get("/public/:publicId", getPublicResume);
 // Protected routes
 router.post("/", protect, createResume);
 router.get("/", protect, getMyResumes);
+router.get("/my-resumes", protect, getMyResumes);
 router.get("/:id", protect, getResumeById);
 router.put("/:id", protect, updateResume);
 router.delete("/:id", protect, deleteResume);

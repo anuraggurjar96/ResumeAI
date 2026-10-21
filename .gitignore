@@ -9,3 +9,5 @@ dist/
 client/dist/
 server/dist/
 .DS_Store
+*.pdf
+*.log

@@ -46,7 +46,7 @@ const Features = () => {
       id="features"
       className="bg-slate-50 py-24"
     >
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="w-full px-6 lg:px-12 xl:px-16">
 
         <div className="text-center max-w-3xl mx-auto">
 

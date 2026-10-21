@@ -1,6 +1,6 @@
 import Resume from "../models/Resume.js";
 
-// ─── Create Resume ────────────────────────────────────────────────────────────
+// Create Resume 
 export const createResume = async (req, res) => {
   try {
     const { resumeName, template, personalInfo, education, experience, projects } = req.body;
@@ -25,7 +25,7 @@ export const createResume = async (req, res) => {
   }
 };
 
-// ─── Get All Resumes for logged-in user ──────────────────────────────────────
+//  Get All Resumes for logged-in user 
 export const getMyResumes = async (req, res) => {
   try {
     const resumes = await Resume.find({ user: req.user._id })
@@ -38,7 +38,7 @@ export const getMyResumes = async (req, res) => {
   }
 };
 
-// ─── Get Single Resume by ID (owner only) ────────────────────────────────────
+// Get Single Resume by ID (owner only) 
 export const getResumeById = async (req, res) => {
   try {
     const resume = await Resume.findOne({
@@ -56,7 +56,7 @@ export const getResumeById = async (req, res) => {
   }
 };
 
-// ─── Update Resume ────────────────────────────────────────────────────────────
+// Update Resume 
 export const updateResume = async (req, res) => {
   try {
     const resume = await Resume.findOne({
@@ -89,7 +89,7 @@ export const updateResume = async (req, res) => {
   }
 };
 
-// ─── Delete Resume ────────────────────────────────────────────────────────────
+// Delete Resume 
 export const deleteResume = async (req, res) => {
   try {
     const resume = await Resume.findOneAndDelete({
@@ -107,7 +107,7 @@ export const deleteResume = async (req, res) => {
   }
 };
 
-// ─── Toggle Public Sharing ────────────────────────────────────────────────────
+// Toggle Public Sharing 
 export const togglePublic = async (req, res) => {
   try {
     const resume = await Resume.findOne({
@@ -133,7 +133,7 @@ export const togglePublic = async (req, res) => {
   }
 };
 
-// ─── Get Public Resume (no auth required) ────────────────────────────────────
+// Get Public Resume (no auth required)
 export const getPublicResume = async (req, res) => {
   try {
     const resume = await Resume.findOne({

@@ -42,8 +42,8 @@ export default function SkillsForm({ formData, handleChange }) {
     <div className="space-y-8">
 
       <div>
-        <h2 className="text-3xl font-bold text-gray-900">Skills</h2>
-        <p className="mt-2 text-gray-500">Enter your technical skills separated by commas.</p>
+        <h2 className="text-3xl font-bold text-gray-900">Skills & Credentials</h2>
+        <p className="mt-2 text-gray-500">Enter your technical skills, certifications, and languages.</p>
       </div>
 
       <div>
@@ -65,9 +65,9 @@ export default function SkillsForm({ formData, handleChange }) {
 
         <textarea
           name="skills"
-          value={formData.skills}
+          value={formData.skills || ""}
           onChange={handleChange}
-          rows={6}
+          rows={5}
           placeholder="C++, JavaScript, React, Node.js, Express.js, MongoDB, Tailwind CSS"
           className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none resize-none focus:ring-2 focus:ring-black"
         />
@@ -80,6 +80,42 @@ export default function SkillsForm({ formData, handleChange }) {
       <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
         <p className="text-sm text-blue-700">
           💡 Tip: Add 6–10 relevant skills to improve ATS compatibility.
+        </p>
+      </div>
+
+      {/* Certifications */}
+      <div className="border-t border-gray-200 pt-6">
+        <label className="block mb-2 text-sm font-medium text-gray-700">
+          Certifications & Credentials (Optional)
+        </label>
+        <textarea
+          name="certifications"
+          value={formData.certifications || ""}
+          onChange={handleChange}
+          rows={3}
+          placeholder="AWS Certified Solutions Architect, Meta Front-End Developer Certificate, Oracle Certified Java Programmer"
+          className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none resize-none focus:ring-2 focus:ring-black"
+        />
+        <p className="mt-1 text-xs text-gray-400">
+          Separate multiple certifications with commas or newlines.
+        </p>
+      </div>
+
+      {/* Languages */}
+      <div className="border-t border-gray-200 pt-6">
+        <label className="block mb-2 text-sm font-medium text-gray-700">
+          Languages (Optional)
+        </label>
+        <input
+          type="text"
+          name="languages"
+          value={formData.languages || ""}
+          onChange={handleChange}
+          placeholder="English (Fluent), Spanish (Conversational), Hindi (Native)"
+          className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-black"
+        />
+        <p className="mt-1 text-xs text-gray-400">
+          Enter languages separated by commas.
         </p>
       </div>
 

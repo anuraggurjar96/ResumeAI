@@ -11,7 +11,7 @@ const Footer = () => {
   return (
     <footer className="bg-slate-900 text-slate-300">
 
-      <div className="max-w-7xl mx-auto px-6 py-16">
+      <div className="w-full px-6 lg:px-12 xl:px-16 py-16">
 
         <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
 
@@ -164,14 +164,14 @@ const Footer = () => {
 
       <div className="border-t border-slate-800">
 
-        <div className="max-w-7xl mx-auto flex flex-col items-center justify-between gap-4 px-6 py-6 md:flex-row">
+        <div className="w-full px-6 lg:px-12 xl:px-16 flex flex-col items-center justify-between gap-4 py-6 md:flex-row">
 
           <p className="text-sm text-slate-500">
             © 2026 ResumeAI. All Rights Reserved.
           </p>
 
           <p className="text-sm text-slate-500">
-            Made with ❤️ using React, Node.js & AI
+            Made with ❤️ Anurag
           </p>
 
         </div>

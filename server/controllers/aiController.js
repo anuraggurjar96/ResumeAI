@@ -1,19 +1,102 @@
 import { GoogleGenAI } from "@google/genai";
 
-// ─── SDK: @google/genai v2.x  ·  Model: gemini-1.5-flash ───────────────────
-// API key is read from process.env — never sent to the frontend.
+// ─── SDK: @google/genai v2.x  ·  Model: gemini-3.5-flash 
+
 
 const getAI = () => {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey === "your_gemini_api_key_here") {
-    throw new Error("GEMINI_API_KEY is not configured in server/.env");
+  if (!apiKey || apiKey.trim() === "" || apiKey === "your_gemini_api_key_here") {
+    const error = new Error(
+      "GEMINI_API_KEY is not configured in server/.env. Please configure a valid API key from Google AI Studio."
+    );
+    error.status = 401;
+    throw error;
   }
   return new GoogleGenAI({ apiKey });
 };
 
-// ─── In-flight deduplication ─────────────────────────────────────────────────
-// Prevents the same endpoint being called concurrently (e.g. double-click).
-// Key = endpoint name.  Value = Promise currently in-flight.
+// Centralized Error 
+const formatGeminiError = (err, endpoint = "") => {
+  const status = err.status || err.statusCode;
+  const message = err.message || "";
+  const code = err.code || "";
+
+  console.error(
+    `[Gemini ERROR] endpoint="${endpoint}" status=${status} code=${code}:`,
+    message.substring(0, 300)
+  );
+
+  // Unauthorized API key
+  if (
+    status === 401 ||
+    status === 403 ||
+    (status === 400 &&
+      (message.includes("API_KEY_INVALID") ||
+        message.includes("API key not valid") ||
+        message.includes("API_KEY_SERVICE_BLOCKED")))
+  ) {
+    return new Error(
+      "Invalid or unauthorized Gemini API key. Please verify your GEMINI_API_KEY in server/.env."
+    );
+  }
+
+  // Quota / Rate limit
+  if (
+    status === 429 ||
+    message.includes("RESOURCE_EXHAUSTED") ||
+    message.toLowerCase().includes("quota")
+  ) {
+    return new Error(
+      "Gemini AI rate limit or quota exceeded. Please wait a moment and try again."
+    );
+  }
+
+  // Model not found or retired
+  if (status === 404 || message.includes("NOT_FOUND")) {
+    return new Error(
+      "Gemini model not found or has been retired. Please update GEMINI_MODEL in server/.env."
+    );
+  }
+
+  // Service unavailable / High demand / Spikes
+  if (
+    status === 503 ||
+    message.includes("UNAVAILABLE") ||
+    message.includes("high demand")
+  ) {
+    return new Error(
+      "Gemini AI service is currently experiencing high demand. Please try again in a few moments."
+    );
+  }
+
+  // Internal Gemini server error
+  if (status === 500) {
+    return new Error(
+      "Gemini AI service encountered an internal error. Please try again shortly."
+    );
+  }
+
+  // Network / Connection issues
+  if (
+    code === "ENOTFOUND" ||
+    code === "ECONNREFUSED" ||
+    code === "ETIMEDOUT" ||
+    code === "EHOSTUNREACH" ||
+    message.includes("fetch failed") ||
+    err.name === "TypeError"
+  ) {
+    return new Error(
+      "Network connection to Gemini API failed. Please check your internet connectivity."
+    );
+  }
+
+  return err instanceof Error
+    ? err
+    : new Error(message || "An unexpected error occurred while communicating with Gemini AI.");
+};
+
+// In-flight deduplication 
+
 const inFlight = new Map();
 
 const callGemini = async (key, prompt) => {
@@ -25,51 +108,53 @@ const callGemini = async (key, prompt) => {
   }
 
   const ai = getAI();
+  const primaryModel = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+  const fallbackModel = "gemini-3.5-flash-lite";
 
-  const request = ai.models
-    .generateContent({
-      model: "gemini-1.5-flash",
-      contents: prompt,
-    })
-    .then((response) => {
-      // response.text is a getter in @google/genai v2.x
-      const text = typeof response.text === "function" ? response.text() : response.text;
+  const executeCall = async () => {
+    try {
+      const response = await ai.models.generateContent({
+        model: primaryModel,
+        contents: prompt,
+      });
+      const text =
+        typeof response.text === "function" ? response.text() : response.text;
       return (text || "").trim();
-    })
-    .catch((err) => {
-      // Log raw error to server terminal for debugging
-      console.error(`[Gemini ERROR] endpoint="${key}" status=${err.status}:`, err.message?.substring(0, 300));
-      // Translate HTTP 429 into a clear, user-friendly message
-      if (err.status === 429) {
-        throw new Error(
-          "AI service is temporarily unavailable due to API limits. Please try again in a minute."
+    } catch (primaryErr) {
+      if (
+        (primaryErr.status === 503 || primaryErr.status === 404) &&
+        primaryModel !== fallbackModel
+      ) {
+        console.warn(
+          `[Gemini WARN] Primary model "${primaryModel}" returned status ${primaryErr.status}. Attempting fallback "${fallbackModel}"...`
         );
+        try {
+          const fallbackResponse = await ai.models.generateContent({
+            model: fallbackModel,
+            contents: prompt,
+          });
+          const fallbackText =
+            typeof fallbackResponse.text === "function"
+              ? fallbackResponse.text()
+              : fallbackResponse.text;
+          return (fallbackText || "").trim();
+        } catch (fallbackErr) {
+          throw formatGeminiError(fallbackErr, key);
+        }
       }
-      // Translate 401 into a clear message (wrong/missing API key)
-      if (err.status === 401) {
-        throw new Error(
-          "Gemini API authentication failed. Please check your GEMINI_API_KEY in server/.env."
-        );
-      }
-      // Translate 404 into a clear message (model retired/wrong)
-      if (err.status === 404) {
-        throw new Error(
-          "Gemini model not found. The model may have been retired — check aiController.js."
-        );
-      }
-      throw err;
-    })
-    .finally(() => {
-      inFlight.delete(key);
-    });
+      throw formatGeminiError(primaryErr, key);
+    }
+  };
+
+  const request = executeCall().finally(() => {
+    inFlight.delete(key);
+  });
 
   inFlight.set(key, request);
   return request;
 };
 
-
-
-// ─── Improve Professional Summary ────────────────────────────────────────────
+// Improve Professional Summary 
 export const improveSummary = async (req, res) => {
   try {
     const { text, jobTitle } = req.body;
@@ -90,7 +175,7 @@ Original summary:
   }
 };
 
-// ─── Improve Experience Description ──────────────────────────────────────────
+// Improve Experience Description 
 export const improveExperience = async (req, res) => {
   try {
     const { text, role, company } = req.body;
@@ -115,7 +200,7 @@ Original description:
   }
 };
 
-// ─── Improve Project Description ─────────────────────────────────────────────
+// Improve Project Description 
 export const improveProject = async (req, res) => {
   try {
     const { text, title, technologies } = req.body;
@@ -141,7 +226,7 @@ Original description:
   }
 };
 
-// ─── Suggest Skills ───────────────────────────────────────────────────────────
+//  Suggest Skills
 export const suggestSkills = async (req, res) => {
   try {
     const { jobTitle, currentSkills, experience } = req.body;
@@ -167,7 +252,7 @@ Example format: JavaScript, React, Node.js, REST APIs, Problem Solving`;
   }
 };
 
-// ─── ATS Check ───────────────────────────────────────────────────────────────
+// ATS Check 
 export const atsCheck = async (req, res) => {
   try {
     const { resumeData } = req.body;
@@ -180,9 +265,9 @@ Name: ${personalInfo?.fullName || ""}
 Job Title: ${personalInfo?.jobTitle || ""}
 Summary: ${personalInfo?.summary || ""}
 Skills: ${personalInfo?.skills || ""}
-Experience: ${(experience || []).map(e => `${e.role} at ${e.company}: ${e.description}`).join("\n")}
-Projects: ${(projects || []).map(p => `${p.title}: ${p.description}`).join("\n")}
-Education: ${(education || []).map(e => `${e.qualification} from ${e.institution}`).join("\n")}
+Experience: ${(experience || []).map((e) => `${e.role || "Role"} at ${e.company || "Company"}: ${e.description || ""}`).join("\n")}
+Projects: ${(projects || []).map((p) => `${p.title || "Project"}: ${p.description || ""}`).join("\n")}
+Education: ${(education || []).map((e) => `${e.qualification || "Degree"} from ${e.institution || "Institution"}`).join("\n")}
     `.trim();
 
     const prompt = `You are an ATS (Applicant Tracking System) expert and professional resume reviewer.
@@ -205,10 +290,22 @@ Return a JSON object with this exact structure (no markdown, no code blocks, raw
 
     let report;
     try {
-      const cleaned = raw.replace(/```json|```/g, "").trim();
+      let cleaned = raw.trim();
+      if (cleaned.startsWith("```")) {
+        cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+      }
       report = JSON.parse(cleaned);
     } catch {
-      report = { raw };
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          report = JSON.parse(jsonMatch[0]);
+        } catch {
+          report = { raw };
+        }
+      } else {
+        report = { raw };
+      }
     }
 
     res.json({ success: true, report });
@@ -217,7 +314,7 @@ Return a JSON object with this exact structure (no markdown, no code blocks, raw
   }
 };
 
-// ─── General Improve ─────────────────────────────────────────────────────────
+// General Improve
 export const improveText = async (req, res) => {
   try {
     const { text, context } = req.body;

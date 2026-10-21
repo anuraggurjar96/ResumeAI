@@ -155,7 +155,7 @@ export default function ResumeList({ onResumeCountChange }) {
                   </span>
                   {resume.isPublic && (
                     <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                      🌐 Public
+                       Public
                     </span>
                   )}
                 </div>

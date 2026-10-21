@@ -4,7 +4,7 @@ import { FaCheckCircle } from "react-icons/fa";
 const Hero = () => {
   return (
     <section className="bg-gradient-to-br from-slate-50 via-white to-emerald-50">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
+      <div className="w-full px-6 lg:px-12 xl:px-16 py-16 lg:py-24">
 
         <div className="grid lg:grid-cols-2 gap-16 items-center">
 
